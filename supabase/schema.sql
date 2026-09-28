@@ -14,9 +14,11 @@ create table if not exists public.script_blocks (
 );
 create table if not exists public.moodboard_items (
   id uuid primary key default uuid_generate_v4(), project_id uuid references public.projects(id) on delete cascade not null,
-  category text not null check (category in ('environment','talent','pov','light')), storage_path text not null, created_at timestamptz not null default now(),
+  category text not null check (category in ('environment','talent','pov','light')), storage_path text not null, description text not null default '', created_at timestamptz not null default now(),
   unique(project_id,category)
 );
+alter table public.moodboard_items add column if not exists description text not null default '';
+
 create table if not exists public.walkthrough_videos (
   id uuid primary key default uuid_generate_v4(), project_id uuid references public.projects(id) on delete cascade not null,
   storage_path text not null, created_at timestamptz not null default now()
