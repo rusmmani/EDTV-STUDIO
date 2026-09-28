@@ -14,10 +14,14 @@ create table if not exists public.script_blocks (
 );
 create table if not exists public.moodboard_items (
   id uuid primary key default uuid_generate_v4(), project_id uuid references public.projects(id) on delete cascade not null,
-  category text not null check (category in ('environment','talent','pov','light')), storage_path text not null, description text not null default '', created_at timestamptz not null default now(),
+  category text not null check (category in ('environment','talent','pov','light')), storage_path text not null, image_paths jsonb not null default '[]'::jsonb, description text not null default '', created_at timestamptz not null default now(),
   unique(project_id,category)
 );
 alter table public.moodboard_items add column if not exists description text not null default '';
+alter table public.moodboard_items add column if not exists image_paths jsonb not null default '[]'::jsonb;
+update public.moodboard_items
+set image_paths=jsonb_build_array(storage_path)
+where (image_paths is null or jsonb_array_length(image_paths)=0) and storage_path is not null;
 
 create table if not exists public.walkthrough_videos (
   id uuid primary key default uuid_generate_v4(), project_id uuid references public.projects(id) on delete cascade not null,
