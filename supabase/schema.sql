@@ -101,3 +101,48 @@ where not exists(select 1 from public.moodboard_scene_items x where x.scene_id=s
 on conflict (scene_id,category) do nothing;
 
 notify pgrst, 'reload schema';
+
+-- Script per scene + talent fields
+alter table public.script_blocks add column if not exists scene_id uuid references public.moodboard_scenes(id) on delete cascade;
+alter table public.script_blocks add column if not exists talent_name text not null default '';
+alter table public.script_blocks add column if not exists action text not null default '';
+alter table public.script_blocks add column if not exists expression text not null default '';
+alter table public.script_blocks add column if not exists dialog text not null default '';
+alter table public.script_blocks add column if not exists description text not null default '';
+
+-- Assign existing legacy script blocks to the first scene of their project.
+update public.script_blocks b
+set scene_id = s.id
+from public.moodboard_scenes s
+where s.project_id = b.project_id
+  and s.position = 0
+  and b.scene_id is null;
+
+-- Make scene-scoped access follow the parent scene/project.
+drop policy if exists "users manage own script blocks" on public.script_blocks;
+create policy "users manage own script blocks" on public.script_blocks
+for all to authenticated
+using (
+  exists (
+    select 1 from public.moodboard_scenes s
+    join public.projects p on p.id=s.project_id
+    where s.id=script_blocks.scene_id and p.user_id=auth.uid()
+  )
+  or exists (
+    select 1 from public.projects p
+    where p.id=script_blocks.project_id and p.user_id=auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from public.moodboard_scenes s
+    join public.projects p on p.id=s.project_id
+    where s.id=script_blocks.scene_id and p.user_id=auth.uid()
+  )
+  or exists (
+    select 1 from public.projects p
+    where p.id=script_blocks.project_id and p.user_id=auth.uid()
+  )
+);
+
+notify pgrst, 'reload schema';
